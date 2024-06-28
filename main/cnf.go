@@ -17,7 +17,7 @@ func ReadCnf(path string) (int, int, [][]int) {
 	)
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Println("打开cnf文件失败 ", err)
+		fmt.Println("打开cnf文件失败\n", err)
 	}
 	defer file.Close()
 	reader := bufio.NewReader(file)
@@ -27,7 +27,7 @@ func ReadCnf(path string) (int, int, [][]int) {
 			if err == io.EOF {
 				return nbVars, nbClauses, clauses
 			}
-			fmt.Println("读取cnf时发生错误 ", err)
+			fmt.Println("读取cnf时发生错误\n", err)
 
 		}
 		if line[0] == 'c' {
@@ -35,7 +35,7 @@ func ReadCnf(path string) (int, int, [][]int) {
 		} else if line[0] == 'p' {
 			_, err := fmt.Sscanf(line, "p cnf %d %d", &nbVars, &nbClauses)
 			if err != nil {
-				fmt.Println("读取变元和子句数量时发生错误 ", err)
+				fmt.Println("读取变元和子句数量时发生错误\n", err)
 			}
 		} else {
 			ss := strings.Split(line[:len(line)-1], " ")
@@ -44,7 +44,7 @@ func ReadCnf(path string) (int, int, [][]int) {
 				if v != "0" {
 					lit, err := strconv.Atoi(v)
 					if err != nil {
-						fmt.Println("读取子句时发生错误")
+						fmt.Println("读取子句时发生错误\n")
 					}
 					clause = append(clause, lit)
 				}
