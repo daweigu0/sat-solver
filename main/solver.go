@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 type Clause struct {
 	literals []int
@@ -29,8 +32,11 @@ func (clause *Clause) IsTrue() bool {
 }
 func (clause *Clause) Attach(solver *Solver) {
 	for _, lit := range clause.literals {
-		list := solver.GetList(lit)
-		list = append(list, clause)
+		if lit > 0 {
+			solver.posList[Var(lit)] = append(solver.posList[Var(lit)], clause)
+		} else {
+			solver.negList[Var(lit)] = append(solver.negList[Var(lit)], clause)
+		}
 	}
 	solver.clauses = append(solver.clauses, clause)
 }
@@ -99,7 +105,7 @@ type Solver struct {
 }
 
 func NewSolver(nbVars, nbClauses int, clauses [][]int) *Solver {
-	return &Solver{
+	solver := &Solver{
 		nbVars:        nbVars,
 		nbClauses:     nbClauses,
 		originClauses: clauses,
@@ -111,6 +117,13 @@ func NewSolver(nbVars, nbClauses int, clauses [][]int) *Solver {
 		model:         make([]uint8, nbVars+1),
 		bucket:        make([]int, nbVars+1),
 	}
+	for i := range solver.negList {
+		solver.negList[i] = []*Clause{}
+	}
+	for i := range solver.posList {
+		solver.posList[i] = []*Clause{}
+	}
+	return solver
 }
 
 func (solver *Solver) GetList(lit int) []*Clause {
@@ -134,7 +147,7 @@ func (solver *Solver) Solve() bool {
 			unit = append(unit, clause[0])
 		} else {
 			for i := 0; i < len(clause)-1; i++ {
-				for j := 0; j < len(clause); j++ {
+				for j := i + 1; j < len(clause); j++ {
 					if clause[i] == clause[j] {
 						clause[j] = clause[len(clause)-1]
 						clause = clause[:len(clause)-1]
@@ -156,22 +169,26 @@ func (solver *Solver) Solve() bool {
 		}
 	}
 	for {
-		ok := solver.MakeBranch()
-		if !ok {
-			return SAT
-		}
 		end, conf := solver.UP()
 		if conf {
-			ok = solver.Back(end)
+			ok := solver.Back(end)
 			if !ok {
 				break
 			}
+			continue
+		}
+		ok := solver.MakeBranch()
+		if !ok {
+			return SAT
 		}
 	}
 	return UNSAT
 }
 func (solver *Solver) Push(lit int) {
 	v := Var(lit)
+	if Value(lit) == solver.model[v] {
+		return
+	}
 	solver.model[v] |= Value(lit)
 	solver.assignStack = append(solver.assignStack, lit)
 }
@@ -190,7 +207,7 @@ func (solver *Solver) Pop(idx int) {
 	}
 }
 func (solver *Solver) UP() (int, bool) {
-	for i := len(solver.assignStack) - 1; i < len(solver.assignStack); i++ {
+	for i := len(solver.assignStack) - 1; i < len(solver.assignStack) && i >= 0; i++ {
 		lit := solver.assignStack[i]
 		//v := Var(lit)
 		clauses := solver.GetList(-lit)
@@ -209,10 +226,10 @@ func (solver *Solver) UP() (int, bool) {
 			clause.SetTrue()
 		}
 		if conf {
-			return i, false
+			return i, conf
 		}
 	}
-	return len(solver.assignStack), true
+	return len(solver.assignStack), false
 }
 func (solver *Solver) GetBackLocation() int {
 	for i := len(solver.branchStack) - 1; i >= 0; i-- {
@@ -263,8 +280,14 @@ func (solver *Solver) Branch() (uint, bool) {
 			}
 		}
 	}
+	if branch == 0 {
+		fmt.Println("debug")
+	}
 	if solver.model[branch] != UNKNOWN {
 		panic("分支变元不为自由变元\n")
+	}
+	for i := range solver.bucket {
+		solver.bucket[i] = 0
 	}
 	return branch, ok
 }

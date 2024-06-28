@@ -22,7 +22,7 @@ func ReadCnf(path string) (int, int, [][]int) {
 	defer file.Close()
 	reader := bufio.NewReader(file)
 	for {
-		line, err := reader.ReadString('\n')
+		bytes, _, err := reader.ReadLine()
 		if err != nil {
 			if err == io.EOF {
 				return nbVars, nbClauses, clauses
@@ -30,6 +30,10 @@ func ReadCnf(path string) (int, int, [][]int) {
 			fmt.Println("读取cnf时发生错误\n", err)
 
 		}
+		if len(bytes) == 0 {
+			break
+		}
+		line := string(bytes)
 		if line[0] == 'c' {
 			continue
 		} else if line[0] == 'p' {
@@ -38,7 +42,8 @@ func ReadCnf(path string) (int, int, [][]int) {
 				fmt.Println("读取变元和子句数量时发生错误\n", err)
 			}
 		} else {
-			ss := strings.Split(line[:len(line)-1], " ")
+
+			ss := strings.Split(line, " ")
 			clause := make([]int, 0, len(ss)-1)
 			for _, v := range ss {
 				if v != "0" {
@@ -52,4 +57,5 @@ func ReadCnf(path string) (int, int, [][]int) {
 			clauses = append(clauses, clause)
 		}
 	}
+	return nbVars, nbClauses, clauses
 }

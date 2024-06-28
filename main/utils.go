@@ -21,3 +21,18 @@ func Min(a, b int) int {
 	}
 	return b
 }
+func Verify(solver *Solver) bool {
+	cnt := 0
+	for _, clause := range solver.originClauses {
+		for _, lit := range clause {
+			if Value(lit) == solver.model[Var(lit)] {
+				cnt++
+				break
+			}
+		}
+	}
+	if cnt == solver.nbClauses {
+		return true
+	}
+	return false
+}
