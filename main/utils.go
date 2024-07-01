@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"sort"
+)
+
 func Var(lit int) uint {
 	if lit == 0 {
 		panic("文字的值为0！\n")
@@ -35,4 +40,65 @@ func Verify(solver *Solver) bool {
 		return true
 	}
 	return false
+}
+func PrintClausesByVar(solver *Solver, lit int) {
+	v := Var(lit)
+	fmt.Printf("---------------------- %d -----------------------------\n", v)
+	for _, clause := range solver.GetList(int(v)) {
+		temp := make([]int, clause.size)
+		copy(temp, clause.literals[:clause.size])
+		sort.Ints(temp)
+		for _, lit := range temp {
+			fmt.Printf("%d ", lit)
+		}
+		fmt.Print(" | ")
+		temp = make([]int, len(clause.literals)-clause.size)
+		copy(temp, clause.literals[clause.size:])
+		sort.Ints(temp)
+		for _, lit := range temp {
+			fmt.Printf("%d ", lit)
+		}
+		fmt.Printf("#%d #%v", clause.size, clause.isTrue)
+		fmt.Println()
+	}
+	fmt.Println("---------------------------------------------------")
+	for _, clause := range solver.GetList(-int(v)) {
+		temp := make([]int, clause.size)
+		copy(temp, clause.literals[:clause.size])
+		sort.Ints(temp)
+		for _, lit := range temp {
+			fmt.Printf("%d ", lit)
+		}
+		fmt.Print(" | ")
+		temp = make([]int, len(clause.literals)-clause.size)
+		copy(temp, clause.literals[clause.size:])
+		sort.Ints(temp)
+		for _, lit := range temp {
+			fmt.Printf("%d ", lit)
+		}
+		fmt.Printf("#%d #%v", clause.size, clause.isTrue)
+		fmt.Println()
+	}
+}
+
+func Check(solver *Solver) {
+	for i := 1; i < len(solver.model); i++ {
+		if solver.model[i] != UNKNOWN {
+			flag := false
+			for _, v := range solver.assignStack {
+				if Var(v) == uint(i) {
+					flag = true
+					break
+				}
+			}
+			if !flag {
+				panic("变元被赋值，但不在assignStack中")
+			}
+		}
+	}
+	for _, v := range solver.assignStack {
+		if Value(v) != solver.model[Var(v)] {
+			panic("变元的赋值与assignStack中的文字不符")
+		}
+	}
 }

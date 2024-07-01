@@ -33,6 +33,7 @@ func ReadCnf(path string) (int, int, [][]int) {
 		if len(bytes) == 0 {
 			break
 		}
+		//line := strings.Trim(string(bytes), " \r\n")
 		line := string(bytes)
 		if line[0] == 'c' {
 			continue
@@ -42,19 +43,23 @@ func ReadCnf(path string) (int, int, [][]int) {
 				fmt.Println("读取变元和子句数量时发生错误\n", err)
 			}
 		} else {
-
 			ss := strings.Split(line, " ")
 			clause := make([]int, 0, len(ss)-1)
 			for _, v := range ss {
+				if len(v) == 0 {
+					continue
+				}
 				if v != "0" {
 					lit, err := strconv.Atoi(v)
 					if err != nil {
 						fmt.Println("读取子句时发生错误\n")
+						goto next
 					}
 					clause = append(clause, lit)
 				}
 			}
 			clauses = append(clauses, clause)
+		next:
 		}
 	}
 	return nbVars, nbClauses, clauses

@@ -21,10 +21,27 @@ func NewClause(literals []int) *Clause {
 func (clause *Clause) GetSize() int {
 	return clause.size
 }
-func (clause *Clause) SetTrue() {
+func (clause *Clause) SetTrue(lit int) {
+	if clause.isTrue {
+		return
+	}
+	ok := false
+	for i := 0; i < clause.size; i++ {
+		if clause.literals[i] == lit {
+			clause.literals[0], clause.literals[i] = clause.literals[i], clause.literals[0]
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		panic("赋值为真的文字不在子句中")
+	}
 	clause.isTrue = true
 }
-func (clause *Clause) SetFalse() {
+func (clause *Clause) SetFalse(lit int) {
+	if lit != clause.literals[0] {
+		return
+	}
 	clause.isTrue = false
 }
 func (clause *Clause) IsTrue() bool {
@@ -40,28 +57,36 @@ func (clause *Clause) Attach(solver *Solver) {
 	}
 	solver.clauses = append(solver.clauses, clause)
 }
-func (clause *Clause) RemoveLit(lit int) int {
+
+func (clause *Clause) RemoveLit(lit int) (int, bool) {
 	if clause.size == 0 {
 		panic("子句长度已经为0，没有文字可以删除！\n")
 	}
 	if clause.isTrue {
-		return clause.size
+		return clause.size, false
 	}
 	v := Var(lit)
+	ok := false
 	for i := 0; i < clause.size; i++ {
 		if v == Var(clause.literals[i]) {
 			clause.size--
 			clause.literals[i], clause.literals[clause.size] = clause.literals[clause.size], clause.literals[i]
+			ok = true
 			break
 		}
 	}
-	return clause.size
+	if !ok {
+		panic(fmt.Sprintf("子句中没有可以删除的文字%d", lit))
+	}
+	return clause.size, true
 }
 
 func (clause *Clause) RecoverLit(lit int) {
-	v := Var(lit)
+	if clause.isTrue {
+		return
+	}
 	for i := clause.size; i < len(clause.literals); i++ {
-		if v == Var(clause.literals[i]) {
+		if lit == clause.literals[i] {
 			clause.literals[i], clause.literals[clause.size] = clause.literals[clause.size], clause.literals[i]
 			clause.size++
 			break
@@ -139,7 +164,7 @@ func (solver *Solver) GetList(lit int) []*Clause {
 	return list
 }
 func (solver *Solver) Solve() bool {
-	unit := []int{}
+	var unit []int
 	for _, clause := range solver.originClauses {
 		if len(clause) == 0 {
 			return UNSAT
@@ -186,81 +211,108 @@ func (solver *Solver) Solve() bool {
 }
 func (solver *Solver) Push(lit int) {
 	v := Var(lit)
-	if Value(lit) == solver.model[v] {
+	if solver.model[v] != UNKNOWN {
 		return
 	}
 	solver.model[v] |= Value(lit)
 	solver.assignStack = append(solver.assignStack, lit)
 }
-func (solver *Solver) Pop(idx int) {
-	lit := solver.assignStack[idx]
+func (solver *Solver) Pop(tail int) {
+	lit := solver.assignStack[tail]
 	v := Var(lit)
 	solver.model[v] &= UNKNOWN
-	solver.assignStack = solver.assignStack[:idx]
+	solver.assignStack = solver.assignStack[:tail]
 	clauses := solver.GetList(lit)
+	//fmt.Println("========= 回溯前 =========")
+	//PrintClausesByVar(solver, lit)
 	for _, clause := range clauses {
-		clause.SetFalse()
+		for i := 0; i < clause.size; i++ {
+			clause.SetFalse(lit)
+		}
 	}
 	clauses = solver.GetList(-lit)
 	for _, clause := range clauses {
 		clause.RecoverLit(-lit)
 	}
+	//fmt.Println("========= 回溯后 =========")
+	//PrintClausesByVar(solver, lit)
 }
+
+// UP
+//
+//	@Description: 单子句传播
+//	@receiver solver
+//	@return int 最后传播的单子句在assignStack中的下标
+//	@return bool 有冲突时为真
 func (solver *Solver) UP() (int, bool) {
 	for i := len(solver.assignStack) - 1; i < len(solver.assignStack) && i >= 0; i++ {
+		//Check(solver)
 		lit := solver.assignStack[i]
 		//v := Var(lit)
 		clauses := solver.GetList(-lit)
 		conf := false
 		for _, clause := range clauses {
-			size := clause.RemoveLit(-lit)
-			if size == 1 {
+			size, ok := clause.RemoveLit(-lit)
+			if ok && size == 1 {
 				solver.Push(clause.literals[0])
 			}
-			if size == 0 {
+			if ok && size == 0 {
 				conf = true
 			}
 		}
 		clauses = solver.GetList(lit)
 		for _, clause := range clauses {
-			clause.SetTrue()
+			clause.SetTrue(lit)
 		}
 		if conf {
 			return i, conf
 		}
 	}
-	return len(solver.assignStack), false
+	return len(solver.assignStack) - 1, false
 }
-func (solver *Solver) GetBackLocation() int {
+func (solver *Solver) GetBackHead() (int, bool) {
 	for i := len(solver.branchStack) - 1; i >= 0; i-- {
 		if solver.branchStack[i].isFlip == false {
 			solver.branchStack[i].isFlip = true
 			solver.branchStack = solver.branchStack[:i+1]
-			return solver.branchStack[i].idx
+			return solver.branchStack[i].idx, true
 		}
 	}
-	return -1
+	return -1, false
 }
-func (solver *Solver) Back(start int) bool {
-	end := solver.GetBackLocation()
-	if end == -1 {
+func (solver *Solver) Back(tail int) bool {
+	head, ok := solver.GetBackHead()
+	if !ok {
 		return false
 	}
-	lit := solver.assignStack[end]
-	for i := start; i >= end; i-- {
+	for i := len(solver.assignStack) - 1; i > tail; i-- {
+		lit := solver.assignStack[i]
+		v := Var(lit)
+		solver.model[v] &= UNKNOWN
+	}
+	lit := solver.assignStack[head]
+	for i := tail; i >= head; i-- {
 		solver.Pop(i)
 	}
+	//PrintClausesByVar(solver, lit)
 	solver.Push(-lit)
+	//Check(solver)
 	return true
 }
 
+// Branch
+//
+//	@Description: moms策略挑选分支变元
+//	@receiver solver
+//	@return uint
+//	@return bool 如果全部子句已经满足，则为假
 func (solver *Solver) Branch() (uint, bool) {
 	minSize := math.MaxInt
 	maxCnt := math.MinInt
 	ok := false
 	branch := uint(0)
 	for _, clause := range solver.clauses {
-		if clause.isTrue == false {
+		if !clause.isTrue {
 			minSize = min(minSize, clause.GetSize())
 			ok = true
 		}
@@ -269,7 +321,7 @@ func (solver *Solver) Branch() (uint, bool) {
 		return branch, ok
 	}
 	for _, clause := range solver.clauses {
-		if clause.isTrue == false && clause.GetSize() == minSize {
+		if !clause.isTrue && clause.GetSize() == minSize {
 			for i := 0; i < clause.GetSize(); i++ {
 				v := Var(clause.literals[i])
 				solver.bucket[v]++
@@ -281,7 +333,7 @@ func (solver *Solver) Branch() (uint, bool) {
 		}
 	}
 	if branch == 0 {
-		fmt.Println("debug")
+		panic("分支变元为0!\n")
 	}
 	if solver.model[branch] != UNKNOWN {
 		panic("分支变元不为自由变元\n")
@@ -292,6 +344,11 @@ func (solver *Solver) Branch() (uint, bool) {
 	return branch, ok
 }
 
+// MakeBranch
+//
+//	@Description: 分支
+//	@receiver solver
+//	@return bool 成功分支返回true；分支失败返回false，表明算例已经满足
 func (solver *Solver) MakeBranch() bool {
 	branch, ok := solver.Branch()
 	if !ok {
