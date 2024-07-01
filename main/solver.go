@@ -189,7 +189,7 @@ func (solver *Solver) Solve() bool {
 	for _, lit := range unit {
 		solver.Push(lit)
 		_, ok := solver.UP()
-		if ok == false {
+		if ok == true {
 			return UNSAT
 		}
 	}

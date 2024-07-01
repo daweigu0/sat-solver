@@ -6,8 +6,9 @@ import (
 )
 
 func main() {
-
-	nbVars, nbClauses, clauses := ReadCnf("D:/SAT/instances/SAT_training_instance_test/middle/4blocks.cnf")
+	//arg := os.Args[0]
+	//nbVars, nbClauses, clauses := ReadCnf(arg)
+	nbVars, nbClauses, clauses := ReadCnf("D:/SAT/instances/Beijing/2bitmax_6.cnf")
 	//fmt.Println(nbVars, nbClauses, clauses)
 	solver := NewSolver(nbVars, nbClauses, clauses)
 	start := time.Now()
