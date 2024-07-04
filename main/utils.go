@@ -26,6 +26,12 @@ func Min(a, b int) int {
 	}
 	return b
 }
+func Max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
 func Verify(solver *Solver) bool {
 	cnt := 0
 	for _, clause := range solver.originClauses {

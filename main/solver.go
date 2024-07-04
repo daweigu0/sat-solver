@@ -66,18 +66,18 @@ func (clause *Clause) RemoveLit(lit int) (int, bool) {
 		return clause.size, false
 	}
 	v := Var(lit)
-	ok := false
+	//ok := false
 	for i := 0; i < clause.size; i++ {
 		if v == Var(clause.literals[i]) {
 			clause.size--
 			clause.literals[i], clause.literals[clause.size] = clause.literals[clause.size], clause.literals[i]
-			ok = true
+			//ok = true
 			break
 		}
 	}
-	if !ok {
-		panic(fmt.Sprintf("子句中没有可以删除的文字%d", lit))
-	}
+	//if !ok {
+	//	panic(fmt.Sprintf("子句中没有可以删除的文字%d", lit))
+	//}
 	return clause.size, true
 }
 
@@ -117,30 +117,34 @@ func NewPair(idx int, isFlip bool) *Pair {
 }
 
 type Solver struct {
-	nbVars        int
-	nbClauses     int
-	originClauses [][]int
-	clauses       []*Clause
-	assignStack   []int
-	branchStack   []*Pair
-	negList       [][]*Clause
-	posList       [][]*Clause
-	model         []uint8
-	bucket        []int
+	nbVars           int
+	nbClauses        int
+	originClauses    [][]int
+	clauses          []*Clause
+	assignStack      []int
+	branchStack      []*Pair
+	negList          [][]*Clause
+	posList          [][]*Clause
+	model            []uint8
+	bucket           []int
+	branchVars       []int
+	sizeOfBranchVars int
 }
 
 func NewSolver(nbVars, nbClauses int, clauses [][]int) *Solver {
 	solver := &Solver{
-		nbVars:        nbVars,
-		nbClauses:     nbClauses,
-		originClauses: clauses,
-		clauses:       make([]*Clause, 0, nbClauses),
-		assignStack:   make([]int, 0, nbVars),
-		branchStack:   make([]*Pair, 0, nbVars),
-		negList:       make([][]*Clause, nbVars+1),
-		posList:       make([][]*Clause, nbVars+1),
-		model:         make([]uint8, nbVars+1),
-		bucket:        make([]int, nbVars+1),
+		nbVars:           nbVars,
+		nbClauses:        nbClauses,
+		originClauses:    clauses,
+		clauses:          make([]*Clause, 0, nbClauses),
+		assignStack:      make([]int, 0, nbVars),
+		branchStack:      make([]*Pair, 0, nbVars),
+		negList:          make([][]*Clause, nbVars+1),
+		posList:          make([][]*Clause, nbVars+1),
+		model:            make([]uint8, nbVars+1),
+		bucket:           make([]int, nbVars+1),
+		branchVars:       make([]int, nbVars),
+		sizeOfBranchVars: 0,
 	}
 	for i := range solver.negList {
 		solver.negList[i] = []*Clause{}
@@ -209,6 +213,7 @@ func (solver *Solver) Solve() bool {
 	}
 	return UNSAT
 }
+
 func (solver *Solver) Push(lit int) {
 	v := Var(lit)
 	if solver.model[v] != UNKNOWN {
@@ -234,8 +239,10 @@ func (solver *Solver) Pop(tail int) {
 	for _, clause := range clauses {
 		clause.RecoverLit(-lit)
 	}
-	//fmt.Println("========= 回溯后 =========")
-	//PrintClausesByVar(solver, lit)
+	if v == 110 {
+		fmt.Println("========= 回溯后 =========")
+		PrintClausesByVar(solver, lit)
+	}
 }
 
 // UP
@@ -248,7 +255,6 @@ func (solver *Solver) UP() (int, bool) {
 	for i := len(solver.assignStack) - 1; i < len(solver.assignStack) && i >= 0; i++ {
 		//Check(solver)
 		lit := solver.assignStack[i]
-		//v := Var(lit)
 		clauses := solver.GetList(-lit)
 		conf := false
 		for _, clause := range clauses {
@@ -325,6 +331,7 @@ func (solver *Solver) Branch() (uint, bool) {
 			for i := 0; i < clause.GetSize(); i++ {
 				v := Var(clause.literals[i])
 				solver.bucket[v]++
+				//maxCnt = Max(maxCnt, solver.bucket[v]) // random branch
 				if solver.bucket[v] > maxCnt {
 					maxCnt = solver.bucket[v]
 					branch = v
@@ -332,6 +339,13 @@ func (solver *Solver) Branch() (uint, bool) {
 			}
 		}
 	}
+	/*for i := 1; i < solver.nbVars+1; i++ {// random branch
+		if solver.bucket[i] == maxCnt {
+			solver.branchVars[solver.sizeOfBranchVars] = i
+			solver.sizeOfBranchVars++
+		}
+	}
+	branch = uint(solver.branchVars[rand.Intn(solver.sizeOfBranchVars)])*/
 	if branch == 0 {
 		panic("分支变元为0!\n")
 	}
@@ -341,6 +355,7 @@ func (solver *Solver) Branch() (uint, bool) {
 	for i := range solver.bucket {
 		solver.bucket[i] = 0
 	}
+	//solver.sizeOfBranchVars = 0 // random branch
 	return branch, ok
 }
 
