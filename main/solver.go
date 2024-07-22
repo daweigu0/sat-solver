@@ -49,11 +49,13 @@ func (clause *Clause) IsTrue() bool {
 }
 func (clause *Clause) Attach(solver *Solver) {
 	for _, lit := range clause.literals {
-		if lit > 0 {
-			solver.posList[Var(lit)] = append(solver.posList[Var(lit)], clause)
-		} else {
-			solver.negList[Var(lit)] = append(solver.negList[Var(lit)], clause)
-		}
+		list := solver.GetList(lit)
+		*list = append(*list, clause)
+		//if lit > 0 {
+		//	solver.posList[Var(lit)] = append(solver.posList[Var(lit)], clause)
+		//} else {
+		//	solver.negList[Var(lit)] = append(solver.negList[Var(lit)], clause)
+		//}
 	}
 	solver.clauses = append(solver.clauses, clause)
 }
@@ -155,15 +157,15 @@ func NewSolver(nbVars, nbClauses int, clauses [][]int) *Solver {
 	return solver
 }
 
-func (solver *Solver) GetList(lit int) []*Clause {
+func (solver *Solver) GetList(lit int) *[]*Clause {
 	if lit == 0 {
 		panic("文字的值为0！\n")
 	}
-	var list []*Clause
+	var list *[]*Clause
 	if lit > 0 {
-		list = solver.posList[Var(lit)]
+		list = &solver.posList[Var(lit)]
 	} else {
-		list = solver.negList[Var(lit)]
+		list = &solver.negList[Var(lit)]
 	}
 	return list
 }
@@ -227,7 +229,7 @@ func (solver *Solver) Pop(tail int) {
 	v := Var(lit)
 	solver.model[v] &= UNKNOWN
 	solver.assignStack = solver.assignStack[:tail]
-	clauses := solver.GetList(lit)
+	clauses := *solver.GetList(lit)
 	//fmt.Println("========= 回溯前 =========")
 	//PrintClausesByVar(solver, lit)
 	for _, clause := range clauses {
@@ -235,7 +237,7 @@ func (solver *Solver) Pop(tail int) {
 			clause.SetFalse(lit)
 		}
 	}
-	clauses = solver.GetList(-lit)
+	clauses = *solver.GetList(-lit)
 	for _, clause := range clauses {
 		clause.RecoverLit(-lit)
 	}
@@ -255,7 +257,7 @@ func (solver *Solver) UP() (int, bool) {
 	for i := len(solver.assignStack) - 1; i < len(solver.assignStack) && i >= 0; i++ {
 		//Check(solver)
 		lit := solver.assignStack[i]
-		clauses := solver.GetList(-lit)
+		clauses := *solver.GetList(-lit)
 		conf := false
 		for _, clause := range clauses {
 			size, ok := clause.RemoveLit(-lit)
@@ -266,7 +268,7 @@ func (solver *Solver) UP() (int, bool) {
 				conf = true
 			}
 		}
-		clauses = solver.GetList(lit)
+		clauses = *solver.GetList(lit)
 		for _, clause := range clauses {
 			clause.SetTrue(lit)
 		}

@@ -50,7 +50,7 @@ func Verify(solver *Solver) bool {
 func PrintClausesByVar(solver *Solver, lit int) {
 	v := Var(lit)
 	fmt.Printf("---------------------- %d -----------------------------\n", v)
-	for _, clause := range solver.GetList(int(v)) {
+	for _, clause := range *solver.GetList(int(v)) {
 		temp := make([]int, clause.size)
 		copy(temp, clause.literals[:clause.size])
 		sort.Ints(temp)
@@ -68,7 +68,7 @@ func PrintClausesByVar(solver *Solver, lit int) {
 		fmt.Println()
 	}
 	fmt.Println("---------------------------------------------------")
-	for _, clause := range solver.GetList(-int(v)) {
+	for _, clause := range *solver.GetList(-int(v)) {
 		temp := make([]int, clause.size)
 		copy(temp, clause.literals[:clause.size])
 		sort.Ints(temp)
