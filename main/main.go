@@ -8,7 +8,7 @@ import (
 func main() {
 	//arg := os.Args[0]
 	//nbVars, nbClauses, clauses := ReadCnf(arg)
-	nbVars, nbClauses, clauses := ReadCnf("D:/SAT/instances/基准算例/性能测试/sud00009.cnf")
+	nbVars, nbClauses, clauses := ReadCnf("instances/Beijing/2bitadd_11.cnf")
 	solver := NewSolver(nbVars, nbClauses, clauses)
 	start := time.Now()
 	result := solver.Solve()

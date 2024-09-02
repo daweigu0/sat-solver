@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -239,10 +238,10 @@ func (solver *Solver) Pop(tail int) {
 	for _, clause := range clauses {
 		clause.RecoverLit(-lit)
 	}
-	if v == 110 {
-		fmt.Println("========= 回溯后 =========")
-		PrintClausesByVar(solver, lit)
-	}
+	//if v == 110 {
+	//	fmt.Println("========= 回溯后 =========")
+	//	PrintClausesByVar(solver, lit)
+	//}
 }
 
 // UP

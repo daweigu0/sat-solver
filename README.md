@@ -11,8 +11,8 @@ A simple SAT solver based on DPLL algorithm written in Go.
 | ewddr2-10-by-5-1.cnf | 0.1499521 |
 | ewddr2-10-by-5-8.cnf | 0.1440685 |
 | enddr2-10-by-5-8.cnf | 0.6654268 |
+| 2bitadd_11.cnf |  2517.0270383   |
 | 4blocks.cnf |     |
-| 2bitadd_11.cnf |     |
 | e0ddr2-10-by-5-1.cnf |     |
 | 2bitadd_12.cnf |     |
 | 2bitadd_10.cnf |     |
